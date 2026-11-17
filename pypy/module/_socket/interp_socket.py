@@ -134,12 +134,21 @@ def idna_converter(space, w_host):
 def addr_from_object(family, fd, space, w_address):
     family = widen(family)
     if family == rsocket.AF_INET:
+        if not space.isinstance_w(w_address, space.w_tuple):
+            raise oefmt(space.w_TypeError,
+                        "AF_INET address must be tuple, not %T", w_address)
+        if space.len_w(w_address) != 2:
+            raise oefmt(space.w_TypeError,
+                        "AF_INET address must be a pair (host, port)")
         w_host, w_port = space.unpackiterable(w_address, 2)
         host = idna_converter(space, w_host)
         port = space.int_w(w_port)
         port = make_ushort_port(space, port)
         return rsocket.INETAddress(host, port)
     elif family == rsocket.AF_INET6:
+        if not space.isinstance_w(w_address, space.w_tuple):
+            raise oefmt(space.w_TypeError,
+                        "AF_INET6 address must be tuple, not %T", w_address)
         pieces_w = space.unpackiterable(w_address)
         if not (2 <= len(pieces_w) <= 4):
             raise oefmt(space.w_TypeError,

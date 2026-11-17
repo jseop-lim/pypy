@@ -160,6 +160,33 @@ def test_socket_connect_typeerrors():
     finally:
         s.close()
 
+def test_inet_address_must_be_tuple():
+    import _socket
+    s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM, 0)
+    try:
+        pytest.raises(TypeError, s.bind, 'localhost')
+        pytest.raises(TypeError, s.bind, ['127.0.0.1', 0])
+        pytest.raises(TypeError, s.bind, ('127.0.0.1',))
+        pytest.raises(TypeError, s.bind, ())
+        pytest.raises(TypeError, s.connect, 'localhost')
+        pytest.raises(TypeError, s.connect_ex, 'localhost')
+    finally:
+        s.close()
+    s = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM, 0)
+    try:
+        pytest.raises(TypeError, s.sendto, b'', 'localhost')
+        pytest.raises(TypeError, s.sendmsg, [b''], [], 0, 'localhost')
+    finally:
+        s.close()
+
+def test_inet6_address_must_be_tuple():
+    import _socket
+    s = _socket.socket(_socket.AF_INET6, _socket.SOCK_STREAM, 0)
+    try:
+        pytest.raises(TypeError, s.bind, ['::1', 0])
+    finally:
+        s.close()
+
 def test_bigport():
     import _socket
     s = _socket.socket()
