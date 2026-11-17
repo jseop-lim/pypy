@@ -206,10 +206,16 @@ def PySequence_GetItem(space, w_obj, i):
         l = PySequence_Length(space, w_obj)
         i += l
         if i < 0:
-            # Prevent things like 'abc'[-4] from turning into 'abc'[-1]
-            # since this can end up calling space.getitem()
-            raise oefmt(space.w_IndexError,
-                "%T index out of range", w_obj)
+            w_where, w_getitem = space.lookup_in_type_where(
+                space.type(w_obj), '__getitem__')
+            if w_where is None or not w_where.is_heaptype():
+                # Prevent things like 'abc'[-4] from turning into 'abc'[-1]
+                # since this can end up calling space.getitem()
+                raise oefmt(space.w_IndexError,
+                    "%T index out of range", w_obj)
+            w_ret = space.get_and_call_function(w_getitem, w_obj,
+                                                space.newint(i))
+            return make_ref(space, w_ret)
     return PySequence_ITEM(space, w_obj, i)
 
 @cpython_api([PyObject], PyObject, abi3=True)

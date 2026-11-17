@@ -219,6 +219,36 @@ class TestSequence(BaseApiTest):
         with raises_w(space, TypeError):
             PySequence_GetItem(space, space.newdict(), 1)
 
+    def test_getitem_negative_out_of_range(self, space, api):
+        with raises_w(space, IndexError):
+            PySequence_GetItem(space, space.newtext('abc'), -4)
+        w_seq = space.appexec([], """():
+            class Seq:
+                def __len__(self):
+                    return 5
+                def __getitem__(self, i):
+                    return i
+            return Seq()""")
+        py_result = api.PySequence_GetItem(w_seq, -7)
+        result = get_w_obj_and_decref(space, py_result)
+        assert space.int_w(result) == -2
+        w_sub = space.appexec([], """():
+            class Sub(str):
+                pass
+            return Sub('abc')""")
+        with raises_w(space, IndexError):
+            PySequence_GetItem(space, w_sub, -4)
+        w_mix = space.appexec([], """():
+            class Mixin:
+                def __getitem__(self, i):
+                    return i
+            class MixStr(Mixin, str):
+                pass
+            return MixStr('abc')""")
+        py_result = api.PySequence_GetItem(w_mix, -4)
+        result = get_w_obj_and_decref(space, py_result)
+        assert space.int_w(result) == -1
+
     def test_index(self, space, api):
         thelist = [9, 8, 7, 6, 5, 4, 3, 2, 1]
         w_l = space.wrap(thelist)
