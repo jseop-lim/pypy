@@ -162,7 +162,8 @@ class W_BaseSetObject(W_Root):
         _initialize_set(space, self, w_iterable)
 
     def descr_repr(self, space):
-        return setrepr(space, space.get_objects_in_repr(), self)
+        return setrepr(space, space.get_objects_in_repr(), self,
+                       space.newbool(self.length() == 0))
 
     def descr_eq(self, space, w_other):
         if isinstance(w_other, W_BaseSetObject):
@@ -1748,13 +1749,13 @@ def _convert_set_to_frozenset(space, w_obj):
 
 
 app = gateway.applevel("""
-    def setrepr(currently_in_repr, s):
+    def setrepr(currently_in_repr, s, empty):
         'The app-level part of repr().'
         if s in currently_in_repr:
             return '%s(...)' % (s.__class__.__name__,)
         currently_in_repr[s] = 1
         try:
-            if not s:
+            if empty:
                 return '%s()' % (s.__class__.__name__,)
             listrepr = repr([x for x in s])
             if type(s) is set:

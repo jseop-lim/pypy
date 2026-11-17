@@ -534,6 +534,15 @@ class AppTestAppSetTest:
         inner = set(therepr[1:-1].split(", "))
         assert inner == set(["1", "2", "3", "set(...)"])
 
+    def test_repr_does_not_call_len(self):
+        class S(set):
+            __len__ = None
+        assert repr(S([1])) == "S({1})"
+        assert repr(S()) == "S()"
+        class F(frozenset):
+            __len__ = None
+        assert repr(F()) == "F()"
+
     def test_recursive_repr_frozenset(self):
         class A(object):
             def __repr__(self):
