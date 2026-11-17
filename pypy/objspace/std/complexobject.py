@@ -133,7 +133,7 @@ def repr_format(x):
     return format_float(x, 'r', 0)
 
 
-def unpackcomplex(space, w_complex, allow_subclass=False, firstarg=True):
+def unpackcomplex(space, w_complex, allow_subclass=False):
     """
     convert w_complex into a complex and return the unwrapped (real, imag)
     tuple. If allow_subclass (i.e. _PyComplex_AsCComplex) we fast path subclasses
@@ -143,67 +143,43 @@ def unpackcomplex(space, w_complex, allow_subclass=False, firstarg=True):
         return (w_complex.realval, w_complex.imagval)
     if allow_subclass and isinstance(w_complex, W_ComplexObject):
         return (w_complex.realval, w_complex.imagval)
-    w_z = None
-    if firstarg:
-        w_method = space.lookup(w_complex, '__complex__')
-        if w_method is not None:
-            w_z = space.get_and_call_function(w_method, w_complex)
+    w_z = _call_complex_method(space, w_complex)
     if w_z is not None:
-        # __complex__() must return a complex
-        if isinstance(w_z, W_ComplexObject):
-            if type(w_z) is not W_ComplexObject:
-                space.warn(
-                    space.newtext("__complex__ returned non-complex (type %s).  The ability to return an instance of a strict subclass of complex is deprecated, and may be removed in a future version of Python." % (space.type(w_z).getname(space))),
-                    space.w_DeprecationWarning
-                )
-            return (w_z.realval, w_z.imagval)
+        return (w_z.realval, w_z.imagval)
+    if not _is_number(space, w_complex):
+        raise oefmt(space.w_TypeError,
+                    "complex() first argument must be a string or a number, not '%T'",
+                    w_complex)
+    return _unpack_number(space, w_complex)
+
+def _call_complex_method(space, w_obj):
+    w_method = space.lookup(w_obj, '__complex__')
+    if w_method is None:
+        return None
+    w_z = space.get_and_call_function(w_method, w_obj)
+    if not isinstance(w_z, W_ComplexObject):
         raise oefmt(space.w_TypeError,
                     "__complex__() must return a complex number")
+    if type(w_z) is not W_ComplexObject:
+        space.warn(
+            space.newtext("__complex__ returned non-complex (type %s).  The ability to return an instance of a strict subclass of complex is deprecated, and may be removed in a future version of Python." % (space.type(w_z).getname(space))),
+            space.w_DeprecationWarning
+        )
+    return w_z
 
-    # try to see whether it has an __index__
-    if space.lookup(w_complex, '__index__') is not None:
-        result = space.float_w(space.float(space.index(w_complex)))
-        return (result, 0.0)
+def _is_number(space, w_obj):
+    return (isinstance(w_obj, W_ComplexObject) or
+            space.lookup(w_obj, '__float__') is not None or
+            space.lookup(w_obj, '__index__') is not None)
 
-    #
-    # no '__complex__' method, so we assume it is a float,
-    # unless it is an instance of some subclass of complex.
-    if space.isinstance_w(w_complex, space.gettypefor(W_ComplexObject)):
-        real = space.float(space.getattr(w_complex, space.newtext("real")))
-        imag = space.float(space.getattr(w_complex, space.newtext("imag")))
-        return (space.float_w(real), space.float_w(imag))
-    #
-    # Check that it is not a string (on which space.float() would succeed).
-    if (space.isinstance_w(w_complex, space.w_bytes) or
-        space.isinstance_w(w_complex, space.w_unicode)):
-        if not firstarg:
-            # complex(x, y): CPython checks both in complex_new_impl, with a
-            # dedicated message for str and the generic one for bytes
-            if space.isinstance_w(w_complex, space.w_unicode):
-                raise oefmt(space.w_TypeError,
-                            "complex() second arg can't be a string")
-            raise oefmt(space.w_TypeError,
-                        "complex() second argument must be a number, not '%T'",
-                        w_complex)
-        raise oefmt(space.w_TypeError,
-                    "complex number expected, got '%T'", w_complex)
-    #
-    if space.lookup(w_complex, '__float__') is not None:
+def _unpack_number(space, w_obj):
+    # w_obj must satisfy _is_number()
+    if isinstance(w_obj, W_ComplexObject):
+        return (w_obj.realval, w_obj.imagval)
+    if space.lookup(w_obj, '__float__') is not None:
         from pypy.objspace.std.floatobject import call_float_method
-        return (space.float_w(call_float_method(space, w_complex)), 0.0)
-    try:
-        return (space.float_w(space.float(w_complex)), 0.0)
-    except OperationError as e:
-        if not e.match(space, space.w_TypeError):
-            raise
-        if firstarg:
-            raise oefmt(space.w_TypeError,
-                        "complex() first argument must be a string or a number, not '%T'",
-                         w_complex)
-        else:
-            raise oefmt(space.w_TypeError,
-                        "complex() second argument must be a number, not '%T'",
-                         w_complex)
+        return (space.float_w(call_float_method(space, w_obj)), 0.0)
+    return (space.float_w(space.float(space.index(w_obj))), 0.0)
 
 # Python3 semantics of c_pow have changed slightly
 
@@ -368,14 +344,28 @@ class W_ComplexObject(W_Root):
                             "complex() arg is a malformed string")
 
         else:
-            # non-string arguments
-            realval, imagval = unpackcomplex(space, w_real)
+            # non-string arguments: both are checked before either is
+            # converted, only __complex__ of the first one runs earlier
+            if not noarg2 and space.isinstance_w(w_imag, space.w_unicode):
+                raise oefmt(space.w_TypeError,
+                            "complex() second arg can't be a string")
+            w_z = _call_complex_method(space, w_real)
+            if w_z is not None:
+                w_real = w_z
+            if not _is_number(space, w_real):
+                raise oefmt(space.w_TypeError,
+                            "complex() first argument must be a string or a "
+                            "number, not '%T'", w_real)
+            if not noarg2 and not _is_number(space, w_imag):
+                raise oefmt(space.w_TypeError,
+                            "complex() second argument must be a number, "
+                            "not '%T'", w_imag)
+            realval, imagval = _unpack_number(space, w_real)
 
             # now take w_imag into account
             if not noarg2:
                 # complex(x, y) == x+y*j, even if 'y' is already a complex.
-                realval2, imagval2 = unpackcomplex(space, w_imag,
-                                                   firstarg=False)
+                realval2, imagval2 = _unpack_number(space, w_imag)
 
                 # try to preserve the signs of zeroes of realval and realval2
                 if imagval2 != 0.0:

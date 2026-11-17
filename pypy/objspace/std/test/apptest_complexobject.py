@@ -359,6 +359,46 @@ def test_second_arg_does_not_use_complex_method():
     assert str(err) == (
         "complex() second argument must be a number, not 'WithComplex'")
 
+def test_constructor_float_before_index():
+    class FloatSub(float):
+        __index__ = None
+    class IntSub(int):
+        def __float__(self):
+            return 5.0
+    class ComplexSub(complex):
+        def __index__(self):
+            return 7
+    assert complex(FloatSub(2.0)) == 2+0j
+    assert complex(1, FloatSub(2.0)) == 1+2j
+    assert complex(IntSub(2)) == 5+0j
+    assert complex(1, IntSub(2)) == 1+5j
+    assert complex(1, ComplexSub(1, 2)) == -1+1j
+
+def test_constructor_bytes_subclass_with_float():
+    class FloatBytes(bytes):
+        def __float__(self):
+            return 2.5
+    assert complex(FloatBytes(b'x')) == 2.5+0j
+    assert complex(1, FloatBytes(b'x')) == 1+2.5j
+    raises(TypeError, complex, b'1')
+    raises(TypeError, complex, 1, b'1')
+
+def test_constructor_checks_second_arg_before_converting_first():
+    class ComplexRaises:
+        def __complex__(self):
+            raise RuntimeError
+    class FloatRaises:
+        def __float__(self):
+            raise RuntimeError
+    class IndexRaises:
+        def __index__(self):
+            raise RuntimeError
+    raises(TypeError, complex, ComplexRaises(), 'x')
+    raises(TypeError, complex, FloatRaises(), None)
+    raises(TypeError, complex, IndexRaises(), ())
+    raises(RuntimeError, complex, ComplexRaises(), None)
+    raises(RuntimeError, complex, FloatRaises(), 1)
+
 def test_error_messages():
     with raises(ZeroDivisionError) as err:
         1+1j / 0
