@@ -10,6 +10,7 @@ from rpython.rlib.objectmodel import specialize
 from rpython.rlib.rfloat import formatd
 from rpython.rlib.rarithmetic import r_uint, intmask
 from pypy.interpreter.signature import Signature
+from pypy.module.unicodedata.interp_ucd import unicodedb
 
 @specialize.argtype(1)
 @jit.elidable
@@ -18,15 +19,23 @@ def _parse_int(space, s, start, end):
     result = 0
     i = start
     while i < end:
-        digit = ord(s[i]) - ord('0')
-        if 0 <= digit <= 9:
-            if result > (sys.maxint - digit) / 10:
-                raise oefmt(space.w_ValueError,
-                            "too many decimal digits in format string")
-            result = result * 10 + digit
+        if ord(s[i]) < 0x80:
+            digit = ord(s[i]) - ord('0')
+            if not 0 <= digit <= 9:
+                break
+            next_i = i + 1
         else:
-            break
-        i += 1
+            # any Unicode decimal digit counts, like in int()
+            try:
+                digit = unicodedb.decimal(rutf8.codepoint_at_pos(s, i))
+            except KeyError:
+                break
+            next_i = rutf8.next_codepoint_pos(s, i)
+        if result > (sys.maxint - digit) / 10:
+            raise oefmt(space.w_ValueError,
+                        "too many decimal digits in format string")
+        result = result * 10 + digit
+        i = next_i
     if i == start:
         result = -1
     return result, i

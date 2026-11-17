@@ -236,6 +236,13 @@ class AppTestUnicodeFormat(BaseStringFormatTests):
         d = {u"\u1000": u"foo"}
         assert u"{\u1000}".format(**d) == u"foo"
 
+    def test_unicode_decimal_digits(self):
+        assert format("x", u"\u0663") == "x  "
+        assert format("x", u"1\u0660") == "x         "
+        assert u"{:\u0663}".format("x") == "x  "
+        assert u"{\u0661}".format("a", "b") == "b"
+        assert u"{0[\u0661]}".format("ab") == "b"
+
     def test_padding_utf8_bug(self):
         assert format(chr(228), "3") == chr(228) + u"  "
 
@@ -277,6 +284,9 @@ class BaseIntegralFormattingTest:
         # not int(); it must not be silently skipped as a fill char and
         # accepted as a valid (empty) spec.
         raises(ValueError, format, self.i(5), u"\xb2")
+
+    def test_unicode_decimal_digit_width(self):
+        assert format(self.i(5), u"\u0663") == "  5"
 
     def test_c(self):
         a = self.i(ord("a"))
@@ -397,6 +407,9 @@ class AppTestFloatFormatting:
     def test_non_ascii_digit_spec(self):
         raises(ValueError, format, 1.5, u"\xb2")
         raises(ValueError, format, 1.5, u".\xb2f")
+
+    def test_unicode_decimal_digit_precision(self):
+        assert format(1.5, u".\u0661f") == "1.5"
 
     def test_locale(self):
         import locale
