@@ -69,6 +69,7 @@ in addition to any features explicitly specified.
     if space.isinstance_w(w_source, space.gettypeobject(ast.W_AST.typedef)):
         if only_ast:
             return w_source
+        space.audit("compile", [w_source, space.w_None])
         ast_node = ast.mod.from_object(space, w_source)
         ec.compiler.validate_ast(ast_node)
         return ec.compiler.compile_ast(ast_node, filename, mode, flags,
@@ -77,6 +78,8 @@ in addition to any features explicitly specified.
     flags |= consts.PyCF_SOURCE_IS_UTF8
     source, flags = source_as_str(space, w_source, 'compile',
                                   "string, bytes or AST", flags)
+    space.audit("compile",
+                [space.newbytes(source), space.newfilename(filename)])
 
     if only_ast:
         node = ec.compiler.compile_to_ast(source, filename, mode, flags, feature_version)
@@ -103,9 +106,12 @@ If only globals is given, locals defaults to it.
         source, flags = source_as_str(space, w_prog, 'eval',
                                       "string, bytes or code",
                                       consts.PyCF_SOURCE_IS_UTF8)
+        source = source.lstrip(' \t')
+        space.audit("compile",
+                    [space.newbytes(source), space.newtext("<string>")])
         ec = space.getexecutioncontext()
-        code = ec.compiler.compile(source.lstrip(' \t'), "<string>", 'eval',
-                                   flags)
+        code = ec.compiler.compile(source, "<string>", 'eval', flags)
+        space.audit("exec", [code])
     if not space.contains_w(w_globals, space.newtext("__builtins__")):
         space.setitem_str(w_globals, "__builtins__", space.builtin)
 

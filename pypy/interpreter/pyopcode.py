@@ -897,6 +897,8 @@ class __extend__(pyframe.PyFrame):
         flags = ec.compiler.getcodeflags(self.pycode)
         outer_func = None
 
+        w_globals, w_locals = ensure_ns(space, w_globals, w_locals, 'exec',
+                                        self)
         if space.isinstance_w(w_prog, space.gettypeobject(PyCode.typedef)):
             space.audit("exec", [w_prog])
             code = space.interp_w(PyCode, w_prog)
@@ -931,10 +933,11 @@ class __extend__(pyframe.PyFrame):
             flags |= consts.PyCF_SOURCE_IS_UTF8
             source, flags = source_as_str(space, w_prog, 'exec',
                                           "string, bytes or code", flags)
+            space.audit("compile",
+                        [space.newbytes(source), space.newtext("<string>")])
             code = ec.compiler.compile(source, "<string>", 'exec', flags)
+            space.audit("exec", [code])
 
-        w_globals, w_locals = ensure_ns(space, w_globals, w_locals, 'exec',
-                                        self)
         space.call_method(w_globals, 'setdefault', space.newtext('__builtins__'),
                           self.get_builtin())
 

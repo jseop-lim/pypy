@@ -94,6 +94,44 @@ def test_exec():
         exec(ret1.__code__)
     assert hook.seen == [("exec", (ret1.__code__, ))]
 
+def test_compile():
+    with TestHook() as hook:
+        compile('a = 1', '<dummy>', 'exec')
+    assert hook.seen == [("compile", (b'a = 1', '<dummy>'))]
+
+def test_compile_ast():
+    import ast
+    tree = ast.parse('a = 1')
+    with TestHook() as hook:
+        compile(tree, '<dummy>', 'exec')
+    assert hook.seen == [("compile", (tree, None))]
+
+def test_eval_source():
+    with TestHook() as hook:
+        res = eval(' 1')
+        assert res == 1
+    assert len(hook.seen) == 2
+    assert hook.seen[0] == ("compile", (b'1', '<string>'))
+    assert hook.seen[1][0] == "exec"
+
+def test_exec_source():
+    with TestHook() as hook:
+        exec('a = 1', {})
+    assert len(hook.seen) == 2
+    assert hook.seen[0] == ("compile", (b'a = 1', '<string>'))
+    assert hook.seen[1][0] == "exec"
+
+def test_compile_hook_raises():
+    with TestHook(raise_on_events="compile"):
+        with pytest.raises(RuntimeError):
+            compile('a = 1', '<dummy>', 'exec')
+
+def test_exec_checks_globals_first():
+    with TestHook() as hook:
+        with pytest.raises(TypeError):
+            exec('a = 1', 5)
+    assert hook.seen == []
+
 def test_sys_getframe():
     with TestHook() as hook:
         f = sys._getframe()
