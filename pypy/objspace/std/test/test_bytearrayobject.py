@@ -876,6 +876,11 @@ class AppTestBytesArray:
         assert bytearray('abc', 'utf-8', 'strict') == bytearray(b'abc')
         assert bytearray('abc', encoding='utf-8') == bytearray(b'abc')
 
+    def test_constructor_encoding_embedded_null(self):
+        raises(ValueError, bytearray, 'abc', 'utf-8\0')
+        raises(ValueError, bytearray, 'abc', 'utf-8', 'strict\0')
+        raises(ValueError, bytearray, 1, 'utf-8\0')
+
     def test_dont_force_offset(self):
         def make(x=b'abcdefghij', shift=3):
             b = bytearray(b'?'*shift + x)

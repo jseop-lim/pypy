@@ -89,6 +89,13 @@ def test_null_bytes():
     raises(SyntaxError, compile, src, 'mymod', 'exec')
     raises(SyntaxError, compile, src, 'mymod', 'exec', 0)
 
+def test_mode_embedded_null():
+    class BadFlags:
+        def __index__(self):
+            raise RuntimeError
+    raises(ValueError, compile, '1', 'mymod', 'exec\0', BadFlags())
+    raises(RuntimeError, compile, '1', 'mymod', 'exec', BadFlags())
+
 def test_assert_remove():
     """Test removal of the asserts with optimize=1."""
     import ast

@@ -1708,11 +1708,15 @@ def get_encoding_and_errors(space, w_encoding, w_errors):
     else:
         utf8 = space.text_w(w_encoding)
         encoding = utf8_encode_wrapper(space, utf8, w_encoding, "strict")
+        if '\x00' in encoding:
+            raise oefmt(space.w_ValueError, "embedded null character")
     if w_errors is None:
         errors = None
     else:
         utf8 = space.text_w(w_errors)
         errors = utf8_encode_wrapper(space, utf8, w_errors, "strict")
+        if '\x00' in errors:
+            raise oefmt(space.w_ValueError, "embedded null character")
     return encoding, errors
 
 def encode_object(space, w_obj, encoding, errors):

@@ -37,6 +37,13 @@ class AppTestCodecs:
         assert codecs.decode(b'a', 'utf-8') == 'a'
         assert codecs.decode(b'a', 'utf-8', 'strict') == 'a'
 
+    def test_encode_decode_arguments_embedded_null(self):
+        import codecs
+        raises(ValueError, codecs.encode, 'a', 'utf-8\0')
+        raises(ValueError, codecs.encode, 'a', 'utf-8', 'strict\0')
+        raises(ValueError, codecs.decode, b'a', 'utf-8\0')
+        raises(ValueError, codecs.decode, b'a', 'utf-8', 'strict\0')
+
     def test_bigU_codecs(self):
         u = u'\U00010001\U00020002\U00030003\U00040004\U00050005'
         for encoding in ('utf-8', 'utf-16', 'utf-16-le', 'utf-16-be',

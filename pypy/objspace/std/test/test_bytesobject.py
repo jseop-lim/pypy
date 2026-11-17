@@ -1087,6 +1087,12 @@ class AppTestBytesObject:
         assert bytes('abc', 'utf-8', 'strict') == b'abc'
         assert bytes('abc', encoding='utf-8') == b'abc'
 
+    def test_constructor_encoding_embedded_null(self):
+        raises(ValueError, bytes, 'abc', 'utf-8\0')
+        raises(ValueError, bytes, 'abc', 'utf-8', 'strict\0')
+        raises(ValueError, bytes, 1, 'utf-8\0')
+        raises(ValueError, bytes, 'abc', 'nosuch', 'strict\0')
+
     def test_constructor_subclass(self):
         class Sub(bytes):
             pass

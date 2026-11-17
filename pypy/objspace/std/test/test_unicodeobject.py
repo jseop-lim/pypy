@@ -265,6 +265,16 @@ class AppTestUnicodeString:
         exec 'def test_startswith_endswith_external(self): """%s"""\n' % (
         f.read(),)
 
+    def test_encoding_embedded_null(self):
+        raises(ValueError, str, b'a', 'utf-8\0')
+        raises(ValueError, str, b'a', 'utf-8', 'strict\0')
+        raises(ValueError, str, 1, 'utf-8\0')
+        raises(ValueError, str, 'a', 'utf-8', 'strict\0')
+        raises(ValueError, 'a'.encode, 'utf-8\0')
+        raises(ValueError, b'a'.decode, 'utf-8', 'strict\0')
+        raises(UnicodeEncodeError, str, b'a', 'utf-8\udc80\0')
+        raises(UnicodeEncodeError, 'a'.encode, 'utf-8', '\0\udc80')
+
     def test_decode_empty_skips_codec_lookup(self):
         assert str(b'', 'x') == ''
         assert str(bytearray(), 'x', 'y') == ''

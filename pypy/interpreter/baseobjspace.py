@@ -1907,7 +1907,7 @@ class ObjSpace(object):
             raise oefmt(self.w_TypeError,
                         "%s() argument '%s' must be str, not %T",
                         funcname, argname, w_obj)
-        return self.text_w(w_obj)
+        return self.text0_w(w_obj)
 
     @specialize.argtype(1)
     def bytes_w(self, w_obj):
