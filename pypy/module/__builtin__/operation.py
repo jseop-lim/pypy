@@ -136,7 +136,7 @@ iter_sentinel = gateway.applevel('''
             if self._exhausted:
                 # callable re-entered and exhausted us; discard result
                 raise StopIteration
-            if result == self._sentinel:
+            if self._sentinel is result or self._sentinel == result:
                 self._exhausted = True
                 raise StopIteration
             return result

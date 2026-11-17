@@ -454,6 +454,19 @@ class AppTestBuiltinApp:
         # a case that runs till the end
         assert list(iter(count(), 100)) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+    def test_iter_callable_sentinel_compares_first(self):
+        class Never(object):
+            def __eq__(self, other):
+                return False
+        class Always(object):
+            def __eq__(self, other):
+                return True
+        assert next(iter(Never, Always()), 42) == 42
+
+    def test_iter_callable_sentinel_identity(self):
+        nan = float('nan')
+        assert next(iter(lambda: nan, nan), 42) == 42
+
     def test_iter_callable_sentinel_pickle(self):
         # 'int' is a picklable, module-level callable; a locally-defined
         # class would itself be unpicklable and confound this test, which
