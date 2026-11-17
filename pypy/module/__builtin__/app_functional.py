@@ -34,6 +34,8 @@ def sum(sequence, start=0):
 Returns the sum of a sequence of numbers (NOT strings) plus the value
 of parameter 'start' (which defaults to 0).  When the sequence is
 empty, returns start."""
+    if isinstance(start, (str, bytes, bytearray)):
+        iter(sequence)   # an error from the iterable comes first
     if isinstance(start, str):
         raise TypeError("sum() can't sum strings [use ''.join(seq) instead]")
     if isinstance(start, bytes):
