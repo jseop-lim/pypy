@@ -54,11 +54,9 @@ def dir(*args):
         return sorted(_caller_locals().keys()) # 2 stackframes away
 
     obj = args[0]
+    # object.__dir__ always exists, so a None here is a __dir__ set to None
     dir_meth = lookup_special(obj, '__dir__')
-    if dir_meth is not None:
-        # obscure: lookup_special won't bind None.__dir__!
-        result = dir_meth(obj) if obj is None else dir_meth()
-        # Will throw TypeError if not iterable
-        return sorted(result)
-    # we should never reach here since object.__dir__ exists
-    return []
+    # obscure: lookup_special won't bind None.__dir__!
+    result = dir_meth(obj) if obj is None else dir_meth()
+    # Will throw TypeError if not iterable
+    return sorted(result)

@@ -25,6 +25,12 @@ class AppTestDir:
                 return 42
         raises(TypeError, dir, Foo())
 
+    def test_dir_obj__dir__none(self):
+        """A __dir__ set to None is called like any other and fails."""
+        class Foo(object):
+            __dir__ = None
+        raises(TypeError, dir, Foo())
+
     def test_dir_traceback(self):
         """Test dir() of traceback."""
         try:
