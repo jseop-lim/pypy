@@ -581,7 +581,8 @@ Miscellaneous
   ``gc.disable`` are supported, but "enabling and disabling the GC" has
   a different meaning in PyPy than in CPython.  These functions
   actually enable and disable the major collections and the
-  execution of finalizers.
+  execution of finalizers.  ``gc.collect()`` always returns 0, because
+  PyPy's GC does not count the unreachable objects it finds.
 
   .. _irc-topic:
 

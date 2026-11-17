@@ -32,7 +32,8 @@ _forbid_debug_detectors_in_release()
 
 @unwrap_spec(generation=int)
 def collect(space, generation=0):
-    "Run a full collection.  The optional argument is ignored."
+    """Run a full collection.  The optional argument is ignored.
+    Always returns 0: the number of unreachable objects is not counted."""
     # First clear the method and the map cache.
     # See test_gc for an example of why.
     from pypy.objspace.std.typeobject import MethodCache
@@ -50,6 +51,7 @@ def collect(space, generation=0):
         # tp_dealloc will be called as part of gc.collect()
         from pypy.module.cpyext.state import _rawrefcount_perform
         _rawrefcount_perform(space)
+    return space.newint(0)
 
 def _run_finalizers(space):
     # if we are running in gc.disable() mode but gc.collect() is called,

@@ -20,6 +20,11 @@ class AppTestGC(object):
         gc.collect() # mostly a "does not crash" kind of test
         gc.collect(0) # mostly a "does not crash" kind of test
 
+    def test_collect_returns_int(self):
+        import gc
+        assert gc.collect() == 0
+        assert gc.collect(0) == 0
+
     def test_disable_finalizers(self):
         import gc
 
