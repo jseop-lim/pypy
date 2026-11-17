@@ -478,6 +478,16 @@ class AppTestInt(object):
     def test_pow(self):
         assert pow(2, -10) == 1/1024.
 
+    def test_str_of_subclass_uses_repr(self):
+        class A(int):
+            def __repr__(self):
+                return 'custom'
+        assert str(A(5)) == 'custom'
+        assert format(A(5)) == 'custom'
+        assert '%s' % A(5) == 'custom'
+        assert str(A(2 ** 100)) == 'custom'
+        assert int.__str__ is object.__str__
+
     def test_int_subclass_ops(self):
         import sys
         class j(int):

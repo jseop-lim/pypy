@@ -485,19 +485,13 @@ def test_round_special_method():
 
 
 def test_error_message_wrong_self():
-    import sys
-    unboundmeth = int.__str__
-    if '__pypy__' in sys.builtin_module_names:
-        # PyPy type-checks 'self' here; CPython's int.__str__ has no
-        # own tp_str and falls back to a generic path with no check,
-        # so int.__str__("!") just returns "!" there.
-        e = pytest.raises(TypeError, unboundmeth, "!")
-        assert "int" in str(e.value)
-        if hasattr(unboundmeth, 'im_func'):
-            e = pytest.raises(TypeError, unboundmeth.im_func, "!")
-            assert "'int'" in str(e.value)
-    else:
-        assert unboundmeth("!") == "'!'"
+    unboundmeth = int.__repr__
+    e = pytest.raises(TypeError, unboundmeth, "!")
+    assert "int" in str(e.value)
+    if hasattr(unboundmeth, 'im_func'):
+        e = pytest.raises(TypeError, unboundmeth.im_func, "!")
+        assert "'int'" in str(e.value)
+    assert int.__str__("!") == "'!'"
 
 
 def test_int_new_pos_only():

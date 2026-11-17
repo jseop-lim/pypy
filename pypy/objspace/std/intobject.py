@@ -1185,7 +1185,6 @@ Base 0 means to interpret the base from the string as an integer literal.
     to_bytes = interpindirect2app(W_AbstractIntObject.descr_to_bytes),
 
     __repr__ = interpindirect2app(W_AbstractIntObject.descr_repr),
-    __str__ = interpindirect2app(W_AbstractIntObject.descr_str),
 
     conjugate = interpindirect2app(W_AbstractIntObject.descr_conjugate),
     bit_length = interpindirect2app(W_AbstractIntObject.descr_bit_length),
