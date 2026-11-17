@@ -235,6 +235,47 @@ def test_memoryview_endian():
     mv = memoryview(c_les)
     assert mv.format == 'T{(16)<B:a:<Q:i:}'
 
+def test_pack_checked_with_fields():
+    class NoFields(Structure):
+        _pack_ = [1]
+    class NegativeNoFields(Union):
+        _pack_ = -1
+    NegativeNoFields()
+    class Sub(NegativeNoFields):
+        pass
+    with pytest.raises(ValueError):
+        class ListPack(Structure):
+            _pack_ = [1]
+            _fields_ = [('a', c_int)]
+    with pytest.raises(ValueError):
+        class FloatPack(Structure):
+            _pack_ = 1.0
+            _fields_ = [('a', c_int)]
+    with pytest.raises(ValueError):
+        class NegativePack(Structure):
+            _pack_ = -1
+            _fields_ = [('a', c_int)]
+    with pytest.raises(ValueError):
+        NoFields._fields_ = [('a', c_int)]
+    with pytest.raises(ValueError):
+        class BadFieldAndPack(Structure):
+            _pack_ = -1
+            _fields_ = [('a', 'b')]
+    with pytest.raises(ValueError):
+        class BadAnonymousAndPack(Structure):
+            _pack_ = -1
+            _anonymous_ = 5
+            _fields_ = [('a', c_int)]
+
+def test_pack_with_index():
+    class Two:
+        def __index__(self):
+            return 2
+    class X(Structure):
+        _pack_ = Two()
+        _fields_ = [('a', c_char), ('b', c_int)]
+    assert sizeof(X) == 6
+
 def test_deepcopy_struct():
     # issue 3022: missing __new__ on StructureInstanceAutoFree
     import copy

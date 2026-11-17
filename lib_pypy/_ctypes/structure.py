@@ -1,3 +1,4 @@
+import operator
 import sys
 import _rawffi
 from _ctypes.basics import _CData, _CDataMeta, keepalive_key,\
@@ -9,6 +10,7 @@ import __pypy__
 
 def names_and_fields(self, _fields_, superclass, anonymous_fields=None):
     # _fields_: list of (name, ctype, [optional_bitfield])
+    _get_pack(self)
     if isinstance(_fields_, tuple):
         _fields_ = list(_fields_)
     for f in _fields_:
@@ -154,9 +156,21 @@ class Field(object):
 
 
 
+def _get_pack(tp):
+    try:
+        pack = operator.index(getattr(tp, '_pack_', 0))
+    except TypeError:
+        pack = -1
+    if not 0 <= pack < 2**31:
+        # _pack_ is only checked when _fields_ is given explicitly
+        if not tp.__dict__.get('_incomplete_', False):
+            raise ValueError("_pack_ must be a non-negative integer")
+        pack = 0
+    return pack
+
+
 def _set_shape(tp, rawfields, is_union=False):
-    tp._ffistruct_ = _rawffi.Structure(rawfields, is_union,
-                                      getattr(tp, '_pack_', 0))
+    tp._ffistruct_ = _rawffi.Structure(rawfields, is_union, _get_pack(tp))
     tp._ffiargshape_ = tp._ffishape_ = (tp._ffistruct_, 1)
     tp._fficompositesize_ = tp._ffistruct_.size
 
@@ -200,10 +214,8 @@ class StructOrUnionMeta(_CDataMeta):
         cls = cls or (object,)
         if isinstance(cls[0], StructOrUnionMeta):
             cls[0]._make_final()
-        if '_pack_' in typedict:
-            if not 0 <= typedict['_pack_'] < 2**31:
-                raise ValueError("_pack_ must be a non-negative integer")
         if '_fields_' in typedict:
+            _get_pack(res)
             if not hasattr(typedict.get('_anonymous_', []), '__iter__'):
                 raise TypeError("Anonymous field must be iterable")
             for item in typedict.get('_anonymous_', []):
