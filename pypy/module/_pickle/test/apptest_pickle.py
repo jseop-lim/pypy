@@ -534,6 +534,27 @@ def test_buffers_error():
 
 # ---- Tests for fixed bugs ----
 
+def test_unpickler_file_attributes():
+    class ReadRaises:
+        @property
+        def read(self):
+            raise ZeroDivisionError
+
+    class OnlyRead:
+        def read(self, n):
+            return b''
+
+    class OnlyReadline:
+        def readline(self):
+            return b''
+
+    with pytest.raises(ZeroDivisionError):
+        Unpickler(ReadRaises())
+    with pytest.raises(TypeError):
+        Unpickler(OnlyRead())
+    with pytest.raises(TypeError):
+        Unpickler(OnlyReadline())
+
 def test_load_int_true_false():
     # load_int must recognise I01\n as True and I00\n as False
     assert loads(b'I01\n.') is True

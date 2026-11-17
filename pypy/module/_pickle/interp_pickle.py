@@ -2014,6 +2014,15 @@ class _Unframer(object):
         self.index = 0
 
 
+def _lookup_attr(space, w_obj, name):
+    try:
+        return space.getattr(w_obj, space.newtext(name))
+    except OperationError as e:
+        if not e.match(space, space.w_AttributeError):
+            raise
+        return None
+
+
 class W_Unpickler(W_Root):
     """This takes a binary file for reading a pickle data stream.
 
@@ -2063,8 +2072,13 @@ class W_Unpickler(W_Root):
 
     def __init__(self, space, w_file, fix_imports, encoding, errors, w_buffers=None):
         self.w_buffers = w_buffers
-        self.w_file_readline = space.getattr(w_file, space.newtext("readline"))
-        self.w_file_read = space.getattr(w_file, space.newtext("read"))
+        w_read = _lookup_attr(space, w_file, "read")
+        w_readline = _lookup_attr(space, w_file, "readline")
+        if w_read is None or w_readline is None:
+            raise oefmt(space.w_TypeError,
+                        "file must have 'read' and 'readline' attributes")
+        self.w_file_read = w_read
+        self.w_file_readline = w_readline
         MEMO_SIZE = 32
         self.memo = [None] * MEMO_SIZE
         self.memo_index = 0 # next free spot
