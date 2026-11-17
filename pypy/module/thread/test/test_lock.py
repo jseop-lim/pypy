@@ -56,6 +56,28 @@ class AppTestLock(GenericTestThread):
         import _thread, weakref
         weakref.ref(_thread.allocate_lock())
 
+    def test_cannot_pickle(self):
+        import _thread
+        lock = _thread.allocate_lock()
+        raises(TypeError, lock.__reduce_ex__, 2)
+        raises(TypeError, lock.__reduce_ex__, 4)
+        raises(TypeError, _thread.RLock().__reduce_ex__, 4)
+        raises(OverflowError, lock.__reduce_ex__, 2 ** 70)
+
+    def test_subclass_can_define_pickling(self):
+        import _thread
+        class WithReduce(_thread.RLock):
+            def __reduce__(self):
+                return (WithReduce, ())
+        class WithGetstate(_thread.RLock):
+            def __getstate__(self):
+                return {'a': 1}
+        class Plain(_thread.RLock):
+            pass
+        assert WithReduce().__reduce_ex__(4) == (WithReduce, ())
+        assert WithGetstate().__reduce_ex__(4)[2] == {'a': 1}
+        raises(TypeError, Plain().__reduce_ex__, 4)
+
     def test_timeout(self):
         import _thread
         assert isinstance(_thread.TIMEOUT_MAX, float)

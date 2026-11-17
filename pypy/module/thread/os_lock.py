@@ -60,6 +60,20 @@ def acquire_timed(space, lock, microseconds):
     return result
 
 
+def reduce_ex(space, w_lock, proto):
+    from pypy.objspace.std.objectobject import descr__reduce_ex__
+    w_object = space.w_object
+    if (proto >= 2 and
+            space.lookup(w_lock, '__reduce__') is
+                space.lookup_in_type(w_object, '__reduce__') and
+            space.lookup(w_lock, '__getstate__') is
+                space.lookup_in_type(w_object, '__getstate__') and
+            space.lookup(w_lock, '__getnewargs_ex__') is None and
+            space.lookup(w_lock, '__getnewargs__') is None):
+        raise oefmt(space.w_TypeError, "cannot pickle '%T' object", w_lock)
+    return descr__reduce_ex__(space, w_lock, proto)
+
+
 class Lock(W_Root):
     "A wrappable box around an interp-level lock object."
 
@@ -156,6 +170,10 @@ but it needn't be locked by the same thread that unlocks it."""
         # XXX this it not good enough! CPython leaks the underlying lock
         self.__init__(space)
 
+    @unwrap_spec(proto=int)
+    def descr_reduce_ex(self, space, proto):
+        return reduce_ex(space, self, proto)
+
 
 Lock.typedef = TypeDef(
     "_thread.lock",
@@ -176,6 +194,7 @@ will block until another thread unlocks it.  Deadlocks may ensue.""",
     __enter__=interp2app(Lock.descr__enter__),
     __exit__=interp2app(Lock.descr__exit__),
     __repr__ = interp2app(Lock.descr__repr__),
+    __reduce_ex__ = interp2app(Lock.descr_reduce_ex),
     __weakref__ = make_weakref_descr(Lock),
     # Obsolete synonyms
     acquire_lock=interp2app(Lock.descr_lock_acquire),
@@ -358,6 +377,10 @@ class W_RLock(W_Root):
         # XXX not good enough, cpython leaks the OS lock
         self.__init__(space)
 
+    @unwrap_spec(proto=int)
+    def descr_reduce_ex(self, space, proto):
+        return reduce_ex(space, self, proto)
+
 
 W_RLock.typedef = TypeDef(
     "_thread.RLock",
@@ -372,5 +395,6 @@ W_RLock.typedef = TypeDef(
     __exit__ = interp2app(W_RLock.descr__exit__),
     __weakref__ = make_weakref_descr(W_RLock),
     __repr__ = interp2app(W_RLock.descr__repr__),
+    __reduce_ex__ = interp2app(W_RLock.descr_reduce_ex),
     _at_fork_reinit = interp2app(W_RLock.descr_at_fork_reinit),
     )
