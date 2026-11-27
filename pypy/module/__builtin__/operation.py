@@ -4,9 +4,10 @@ Interp-level implementation of the basic space operations.
 
 import math
 
-from pypy.interpreter import gateway
+from pypy.interpreter.baseobjspace import W_Root
 from pypy.interpreter.error import OperationError, oefmt
-from pypy.interpreter.gateway import unwrap_spec, WrappedDefault
+from pypy.interpreter.gateway import unwrap_spec, WrappedDefault, interp2app
+from pypy.interpreter.typedef import TypeDef
 from rpython.rlib.rfloat import isfinite, round_double, round_away
 from rpython.rlib import rfloat, rutf8
 import __builtin__
@@ -111,50 +112,46 @@ otherwise the same type as the number. ndigits may be negative."""
 
 # ____________________________________________________________
 
-iter_sentinel = gateway.applevel('''
-    # App-level implementation of the iter(callable,sentinel) operation.
-    # Uses a class instead of a generator to avoid "generator already executing"
-    # when the callable re-enters the iterator (e.g. exhausts it during the call).
+class W_CallableIterator(W_Root):
+    def __init__(self, w_callable, w_sentinel):
+        self.w_callable = w_callable
+        self.w_sentinel = w_sentinel
 
-    class _CallableIterator:
-        def __init__(self, callable_, sentinel):
-            self._callable = callable_
-            self._sentinel = sentinel
-            self._exhausted = False
+    def descr_iter(self, space):
+        return self
 
-        def __iter__(self):
-            return self
+    def descr_next(self, space):
+        w_callable = self.w_callable
+        if w_callable is None:
+            raise OperationError(space.w_StopIteration, space.w_None)
+        try:
+            w_result = space.call_function(w_callable)
+        except OperationError as e:
+            if e.match(space, space.w_StopIteration):
+                self.w_callable = None
+            raise
+        if self.w_callable is None:
+            # the callable re-entered and exhausted us; discard the result
+            raise OperationError(space.w_StopIteration, space.w_None)
+        if space.is_true(space.eq(w_result, self.w_sentinel)):
+            self.w_callable = None
+            raise OperationError(space.w_StopIteration, space.w_None)
+        return w_result
 
-        def __next__(self):
-            if self._exhausted:
-                raise StopIteration
-            try:
-                result = self._callable()
-            except StopIteration:
-                self._exhausted = True
-                raise
-            if self._exhausted:
-                # callable re-entered and exhausted us; discard result
-                raise StopIteration
-            if result == self._sentinel:
-                self._exhausted = True
-                raise StopIteration
-            return result
+    def descr_reduce(self, space):
+        w_iter = space.builtin.get('iter')
+        if self.w_callable is None:
+            return space.newtuple2(w_iter,
+                                   space.newtuple([space.newtuple([])]))
+        return space.newtuple2(
+            w_iter, space.newtuple2(self.w_callable, self.w_sentinel))
 
-        def __reduce__(self):
-            if self._exhausted:
-                return (iter, ((),))
-            return (iter, (self._callable, self._sentinel))
-
-    def iter_sentinel(callable_, sentinel):
-        if not callable(callable_):
-            raise TypeError('iter(v, w): v must be callable')
-        return _CallableIterator(callable_, sentinel)
-
-''', filename=__file__,
-    # ApplevelClass.__init__ defaults modname to '__builtin__' (py2-ism);
-    # remove this once that default becomes 'builtins'.
-    modname='builtins').interphook("iter_sentinel")
+W_CallableIterator.typedef = TypeDef("callable_iterator",
+    __iter__ = interp2app(W_CallableIterator.descr_iter),
+    __next__ = interp2app(W_CallableIterator.descr_next),
+    __reduce__ = interp2app(W_CallableIterator.descr_reduce),
+)
+W_CallableIterator.typedef.acceptable_as_base_class = False
 
 def iter(space, w_collection_or_callable, w_sentinel=None):
     """iter(collection) -> iterator over the elements of the collection.
@@ -165,7 +162,9 @@ iter(callable, sentinel) -> iterator calling callable() until it returns
     if w_sentinel is None:
         return space.iter(w_collection_or_callable)
     else:
-        return iter_sentinel(space, w_collection_or_callable, w_sentinel)
+        if not space.callable_w(w_collection_or_callable):
+            raise oefmt(space.w_TypeError, "iter(v, w): v must be callable")
+        return W_CallableIterator(w_collection_or_callable, w_sentinel)
 
 def next(space, w_iterator, w_default=None):
     """next(iterator[, default])

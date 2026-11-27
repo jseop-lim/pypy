@@ -484,6 +484,21 @@ class AppTestBuiltinApp:
         pickle.dumps(it, 0)
         pickle.dumps(it, 0)
 
+    def test_iter_callable_sentinel_type(self):
+        it = iter(int, 5)
+        assert type(it).__name__ == 'callable_iterator'
+        assert repr(it).startswith('<callable_iterator object at ')
+        raises(TypeError, type, 'S', (type(it),), {})
+        raises(TypeError, type(it), int, 5)
+        raises(AttributeError, setattr, it, 'x', 1)
+
+    def test_iter_callable_sentinel_reduce(self):
+        it = iter(int, 5)
+        assert it.__reduce__() == (iter, (int, 5))
+        it = iter(int, 0)
+        raises(StopIteration, next, it)
+        assert it.__reduce__() == (iter, ((),))
+
     def test_enumerate(self):
         import sys
         seq = range(2,4)
